@@ -1,11 +1,10 @@
 import React, { useEffect } from 'react';
-
-const URL = 'https://raw.githubusercontent.com/Drarig29/brackets-viewer.js/master/demo/db.json';
+import {dataFut} from './data';
 
 async function render(bandera, dataLoad) {
   let data = {}
   if(bandera)
-    data = await fetch(URL).then(res => res.json());
+    data = dataFut[0];
   else
     data = dataLoad;
 
@@ -26,8 +25,11 @@ async function render(bandera, dataLoad) {
   );
 
   window.bracketsViewer.onMatchClicked = async (matchObjeto) => {
+    console.log('OnClick');
     console.log(matchObjeto)
     const idPosicionSeleccionadaString = document.querySelector(`[data-match-id="${matchObjeto.id}"] .opponents .name > span`).textContent.replace('#', '');
+    console.log('idPosicionSeleccionadaString');
+    console.log(idPosicionSeleccionadaString)
     let idPosicionSeleccionadaNumber = Number(idPosicionSeleccionadaString)
     if(idPosicionSeleccionadaNumber === matchObjeto.opponent1.position){
       matchObjeto.opponent1.result = 'win'
@@ -37,7 +39,13 @@ async function render(bandera, dataLoad) {
       matchObjeto.opponent2.result = 'win'
       matchObjeto.opponent1.result = 'loss'
     }
-    const dataL = await fetch(URL).then(res => res.json());
+    const dataL = dataFut[0];
+    console.log('dataL');
+    console.log(dataL);
+
+    console.log('matchObjeto');
+    console.log(matchObjeto);
+
     await window.bracketsManager.import(dataL);
     await window.bracketsManager.update.match(
       {
