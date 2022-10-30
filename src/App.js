@@ -1,18 +1,27 @@
 import React, { useEffect } from 'react';
-import {dataFut} from './data';
 
-async function render(bandera, dataLoad) {
-  let data = {}
-  if(bandera)
-    data = dataFut[0];
-  else
-    data = dataLoad;
+async function render() {
+  let dataBack = {}
+  let dataStage = await fetch('http://localhost:8081/stage').then(res => res.json());
+  let dataMatch = await fetch('http://localhost:8081/match').then(res => res.json());
+  let dataParticipant = await fetch('http://localhost:8081/participant').then(res => res.json());
+  let dataGroup = await fetch('http://localhost:8081/group').then(res => res.json());
+  let dataRound = await fetch('http://localhost:8081/round').then(res => res.json());
+  let dataMatchGame = await fetch('http://localhost:8081/match_game').then(res => res.json());
+  dataBack = {
+    "participant": dataParticipant,
+    "match": dataMatch,
+    "stage": dataStage,
+    "group": dataGroup,
+    "round": dataRound,
+    "match_game": dataMatchGame
+  }
 
   window.bracketsViewer.render({
-      stages: data.stage,
-      matches: data.match,
-      matchGames: data.match_game,
-      participants: data.participant,
+      stages: dataBack.stage,
+      matches: dataBack.match,
+      // matchGames: data.match_game,
+      participants: dataBack.participant,
   }, {
       selector: '#idviewer',
       participantOriginPlacement: 'before',
@@ -25,27 +34,23 @@ async function render(bandera, dataLoad) {
   );
 
   window.bracketsViewer.onMatchClicked = async (matchObjeto) => {
-    console.log('OnClick');
-    console.log(matchObjeto)
-    const idPosicionSeleccionadaString = document.querySelector(`[data-match-id="${matchObjeto.id}"] .opponents .name > span`).textContent.replace('#', '');
-    console.log('idPosicionSeleccionadaString');
-    console.log(idPosicionSeleccionadaString)
-    let idPosicionSeleccionadaNumber = Number(idPosicionSeleccionadaString)
-    if(idPosicionSeleccionadaNumber === matchObjeto.opponent1.position){
+    
+    // Obtiene nombre equipo seleccionado en base al estilo hover de la clase participant
+    const equipoSeleccionadoHTML = document.querySelector(`[data-match-id="${matchObjeto.id}"] .opponents .participant:hover .name`).textContent;
+    // Obtiene objeto de tipo Participant filtrado por nombre de equipo seleccionado
+    let equipoObjeto = await fetch('http://localhost:8081/participant?name=' + equipoSeleccionadoHTML).then(res => res.json());
+    // En base al match captado en el evento onMatchClicked
+    // determinar a que oponente se hizo la seleccion para colocar estado de win y loss
+    if(equipoObjeto[0].id === matchObjeto.opponent1.id){
       matchObjeto.opponent1.result = 'win'
       matchObjeto.opponent2.result = 'loss'
     }
-    if(idPosicionSeleccionadaNumber === matchObjeto.opponent2.position){
+    if(equipoObjeto[0].id === matchObjeto.opponent2.id){
       matchObjeto.opponent2.result = 'win'
       matchObjeto.opponent1.result = 'loss'
     }
-    const dataL = dataFut[0];
-    console.log('dataL');
-    console.log(dataL);
-
-    console.log('matchObjeto');
-    console.log(matchObjeto);
-
+    // Proceso de actualización de los datoa a nivel de brackets
+    const dataL = dataBack;
     await window.bracketsManager.import(dataL);
     await window.bracketsManager.update.match(
       {
@@ -54,16 +59,29 @@ async function render(bandera, dataLoad) {
         opponent2: matchObjeto.opponent2,
       }
     );
-    const newData = await window.bracketsManager.export();
-    console.log(newData);
-    await render(false, newData)
+    const resultDataTorneo = await window.bracketsManager.export();
+    console.log("resultDataTorneo");
+    console.log(resultDataTorneo);
+    // Actualizamos base de datos de match
+    for (const singleMatch of resultDataTorneo.match) {
+      await fetch('http://localhost:8081/match/'+ singleMatch.id, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(singleMatch)
+      }).then(res => res.json());
+        
+    }
+    
+    render();
   }
 
 }
 
 function App() {
   useEffect(() => {
-    render(true, {});
+    render();
   }, []);
   
   return <div id="idviewer"  className="brackets-viewer"></div>
