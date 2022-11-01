@@ -131,7 +131,7 @@ async function render() {
       }).then(res => res.json());        
     // });
     }    
-    render();
+    window.location.reload(false);
   }
 
 }
